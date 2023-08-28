@@ -1,21 +1,8 @@
-require('dotenv').config({ path: './.env.local' });
-const express = require('express');
 const axios = require('axios');
-const app = express();
 
+exports.generateOutline = async (req, res, next) => {
+  console.log("Received request with body:", req.body);
 
-
-// This is needed to be able to parse the JSON body of incoming requests
-app.use(express.json());
-
-const cors = require('cors')
-app.use(cors({
-  origin: 'http://localhost:3000', 
-  methods: ['GET', 'POST'],   // Allowed methods
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-app.post('/generateOutline', async (req, res) => {
   const { title, description, tag } = req.body;
 
   // Ensure that all parameters are provided
@@ -25,6 +12,12 @@ app.post('/generateOutline', async (req, res) => {
   }
 
   const OPENAI_API_KEY = process.env.OPEN_API_KEY;
+  if (!OPENAI_API_KEY) {
+    console.error("OpenAI API key is not set.");
+    res.status(500).json({ error: 'Server configuration error.' });
+    return;
+  }
+
   const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
   const headers = {
     'Content-Type': 'application/json',
@@ -32,25 +25,27 @@ app.post('/generateOutline', async (req, res) => {
   };
 
   const prompt = `Generate an outline for a blog post. Layout in markdown with headers. Add SEO optimized meta title and meta description. Create a social media post for the content. Title: ${title}, Description: ${description}, Tag: ${tag}`;
+  console.log("Generated prompt:", prompt);
 
   try {
     const response = await axios.post(OPENAI_URL, {
       model: 'gpt-3.5-turbo',
       messages: [
-        { role: 'system', content: 'You are a knowledgable product marketer for malware prevention, detection and analysis platform.' },
+        { role: 'system', content: 'You are a knowledgeable product marketer for malware prevention, detection, and analysis platform.' },
         { role: 'user', content: prompt },
       ],
     }, { headers });
 
-    const outline = response.data.choices[0].message.content;
-    res.status(200).json({ outline });
+    console.log("OpenAI Response:", response.data);
+
+    const outline = response.data.choices && response.data.choices[0] && response.data.choices[0].message.content;
+    if (outline) {
+      res.status(200).json({ outline });
+    } else {
+      res.status(500).json({ error: 'Failed to generate an outline from OpenAI.' });
+    }
   } catch (error) {
-    console.error(error);
+    console.error("Error with OpenAI request:", error);
     res.status(500).json({ error: 'An error occurred while generating the outline.' });
   }
-});
-
-const port = process.env.PORT || 3001;
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+};
