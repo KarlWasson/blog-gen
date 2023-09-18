@@ -1,7 +1,7 @@
 // fetchOutline.js
 const fetchOutline = async (data) => {
     try {
-        const response = await fetch('http://localhost:3001/generateOutline', {
+        const response = await fetch('http://accessibletechwriting.com/generateOutline', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
